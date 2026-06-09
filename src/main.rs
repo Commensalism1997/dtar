@@ -182,38 +182,62 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                     Mode::Storage => {
                         let _chandler: JoinHandle<()>;
                         let ehandler: JoinHandle<()>;
-                        let fpath = format!(".dtar.{}.tar", file.to_string_lossy());
-                        let mut buf = fs::File::create(&fpath)?;
-                        operations::read_compressed_to_buf(file, &mut buf, fm)?;
-                        buf.flush()?;
-                        let buf = fs::File::open(&fpath)?;
-                        let buf2 = fs::File::open(&fpath)?;
-                        let (ampb, apb) = (mpb.clone(), pb.clone());
-                        let arq = Archive::new(buf);
-                        _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
-                        let arq = Archive::new(buf2);
-                        mainpb.set_message("Extracting...");
-                        ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
-                        ehandler.join().unwrap();
-                        fs::remove_file(&fpath)?;
+                        if let Format::Tar = fm {
+                            mpb.suspend(|| eprintln!("Storage mode is redundant with an uncompressed tar archive"));
+                            let (ampb, apb) = (mpb.clone(), pb.clone());
+                            let arq = operations::prepare_archive(file, fm)?;
+                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let arq = operations::prepare_archive(file, fm)?;
+                            mainpb.set_message("Extracting...");
+                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            ehandler.join().unwrap();
+                        }
+                        else {
+                            let fpath = format!(".dtar.{}.tar", file.to_string_lossy());
+                            let mut buf = fs::File::create(&fpath)?;
+                            operations::read_compressed_to_buf(file, &mut buf, fm)?;
+                            buf.flush()?;
+                            let buf = fs::File::open(&fpath)?;
+                            let buf2 = fs::File::open(&fpath)?;
+                            let (ampb, apb) = (mpb.clone(), pb.clone());
+                            let arq = Archive::new(buf);
+                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let arq = Archive::new(buf2);
+                            mainpb.set_message("Extracting...");
+                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            ehandler.join().unwrap();
+                            fs::remove_file(&fpath)?;
+                        }
                     },
                     Mode::StorageKeep => {
                         let _chandler: JoinHandle<()>;
                         let ehandler: JoinHandle<()>;
-                        let fpath = format!(".dtar.{}.tar", file.to_string_lossy());
-                        let mut buf = fs::File::create(&fpath)?;
-                        operations::read_compressed_to_buf(file, &mut buf, fm)?;
-                        buf.flush()?;
-                        let buf = fs::File::open(&fpath)?;
-                        let buf2 = fs::File::open(&fpath)?;
-                        let (ampb, apb) = (mpb.clone(), pb.clone());
-                        let arq = Archive::new(buf);
-                        _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
-                        let arq = Archive::new(buf2);
-                        mainpb.set_message("Extracting...");
-                        ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
-                        ehandler.join().unwrap();
-                        fs::rename(&fpath, format!("{}.tar", file.to_string_lossy()))?;
+                        if let Format::Tar = fm {
+                            mpb.suspend(|| eprintln!("Storage mode is redundant with an uncompressed tar archive"));
+                            let (ampb, apb) = (mpb.clone(), pb.clone());
+                            let arq = operations::prepare_archive(file, fm)?;
+                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let arq = operations::prepare_archive(file, fm)?;
+                            mainpb.set_message("Extracting...");
+                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            ehandler.join().unwrap();
+                        }
+                        else {
+                            let fpath = format!(".dtar.{}.tar", file.to_string_lossy());
+                            let mut buf = fs::File::create(&fpath)?;
+                            operations::read_compressed_to_buf(file, &mut buf, fm)?;
+                            buf.flush()?;
+                            let buf = fs::File::open(&fpath)?;
+                            let buf2 = fs::File::open(&fpath)?;
+                            let (ampb, apb) = (mpb.clone(), pb.clone());
+                            let arq = Archive::new(buf);
+                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let arq = Archive::new(buf2);
+                            mainpb.set_message("Extracting...");
+                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            ehandler.join().unwrap();
+                            fs::rename(&fpath, format!("{}.tar", file.to_string_lossy()))?;
+                        }
                     },
                     Mode::Sync => {
                         let arq = operations::prepare_archive(file, fm)?;
