@@ -157,39 +157,33 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
             {
                 match *mode {
                     Mode::Processor => {
-                        let _chandler: JoinHandle<()>;
-                        let ehandler: JoinHandle<()>;
                         let arq = operations::prepare_archive(file, fm)?;
                         let (ampb, apb) = (mpb.clone(), pb.clone());
-                        _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                        let _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
                         let arq = operations::prepare_archive(file, fm)?;
                         mainpb.set_message("Extracting...");
-                        ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                        let ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
                         ehandler.join().unwrap();
                     }
                     Mode::Memory => {
-                        let _chandler: JoinHandle<()>;
-                        let ehandler: JoinHandle<()>;
                         let mut buf: Vec<u8> = Vec::new();
                         operations::read_compressed_to_buf(file, &mut buf, fm)?;
                         let buf2 = buf.clone();
                         let (ampb, apb) = (mpb.clone(), pb.clone());
-                        _chandler = spawn(move || operations::count_archive_and_add_pb_vec(buf, ampb, apb, name));
+                        let _chandler = spawn(move || operations::count_archive_and_add_pb_vec(buf, ampb, apb, name));
                         mainpb.set_message("Extracting...");
-                        ehandler = spawn(move || operations::extract_archive_with_progress_vec(buf2, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                        let ehandler = spawn(move || operations::extract_archive_with_progress_vec(buf2, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
                         ehandler.join().unwrap();
                     },
                     Mode::Storage => {
-                        let _chandler: JoinHandle<()>;
-                        let ehandler: JoinHandle<()>;
                         if let Format::Tar = fm {
                             mpb.suspend(|| eprintln!("Storage mode is redundant with an uncompressed tar archive"));
                             let (ampb, apb) = (mpb.clone(), pb.clone());
                             let arq = operations::prepare_archive(file, fm)?;
-                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
                             let arq = operations::prepare_archive(file, fm)?;
                             mainpb.set_message("Extracting...");
-                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            let ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
                             ehandler.join().unwrap();
                         }
                         else {
@@ -201,25 +195,23 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                             let buf2 = fs::File::open(&fpath)?;
                             let (ampb, apb) = (mpb.clone(), pb.clone());
                             let arq = Archive::new(buf);
-                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
                             let arq = Archive::new(buf2);
                             mainpb.set_message("Extracting...");
-                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            let ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
                             ehandler.join().unwrap();
                             fs::remove_file(&fpath)?;
                         }
                     },
                     Mode::StorageKeep => {
-                        let _chandler: JoinHandle<()>;
-                        let ehandler: JoinHandle<()>;
                         if let Format::Tar = fm {
                             mpb.suspend(|| eprintln!("Storage mode is redundant with an uncompressed tar archive"));
                             let (ampb, apb) = (mpb.clone(), pb.clone());
                             let arq = operations::prepare_archive(file, fm)?;
-                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
                             let arq = operations::prepare_archive(file, fm)?;
                             mainpb.set_message("Extracting...");
-                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            let ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
                             ehandler.join().unwrap();
                         }
                         else {
@@ -231,10 +223,10 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                             let buf2 = fs::File::open(&fpath)?;
                             let (ampb, apb) = (mpb.clone(), pb.clone());
                             let arq = Archive::new(buf);
-                            _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
+                            let _chandler = spawn(move || operations::count_archive_and_add_pb(arq, ampb, apb, name));
                             let arq = Archive::new(buf2);
                             mainpb.set_message("Extracting...");
-                            ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
+                            let ehandler = spawn(move || operations::extract_archive_with_progress(arq, dst, mpb.clone(), name2, mainpb, pb.clone(), verbose, filters));
                             ehandler.join().unwrap();
                             fs::rename(&fpath, format!("{}.tar", file.to_string_lossy()))?;
                         }
