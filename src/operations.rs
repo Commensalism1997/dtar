@@ -130,7 +130,7 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
 
     if let Some(ref pb) = *pbr.lock().unwrap() {
         pb_exists = true;
-        pb.set_message(format!("({sofar}) Extracting {name}..."));
+        pb.set_message(format!("Extracting {name}..."));
     }
 
     if dst.symlink_metadata().is_err() {
