@@ -3,6 +3,7 @@ use flate2::bufread::GzDecoder;
 use indicatif::{MultiProgress, ProgressBar};
 use xz2::bufread::XzDecoder;
 use tar::Archive;
+use colored::Colorize;
 
 use crate::Format;
 
@@ -113,7 +114,7 @@ pub fn count_archive_and_add_pb_vec(buf: Vec<u8>, mpb: Arc<MultiProgress>, pb: A
 pub  fn count_archive_and_add_pb(mut arq: Archive<impl Read>, mpb: Arc<MultiProgress>, pb: Arc<Mutex<Option<ProgressBar>>>, name: String) {
     let count = arq.entries().unwrap().count();
     let mut pb = pb.lock().unwrap();
-    *pb = Some(mpb.add(crate::style::themed_progressbar(count as u64).with_message(format!("Extracting {name}..."))));
+    *pb = Some(mpb.add(crate::style::themed_progressbar(count as u64).with_message(format!("Extracting {}...", name.cyan().bold()))));
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -130,7 +131,7 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
 
     if let Some(ref pb) = *pbr.lock().unwrap() {
         pb_exists = true;
-        pb.set_message(format!("Extracting {name}..."));
+        pb.set_message(format!("Extracting {}...", name.cyan().bold()));
     }
 
     if dst.symlink_metadata().is_err() {
@@ -163,15 +164,15 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
         }
         if let Some(name) = fname {
             if !pb_exists {
-                mainpb.set_message(format!("({sofar}) Extracting {}...", name.to_string_lossy()));
+                mainpb.set_message(format!("{} Extracting {}...", format!("({sofar})").white(), name.to_string_lossy().yellow().bold()));
             }
             else {
-                mainpb.set_message(format!("Extracting {}...", name.to_string_lossy()));
+                mainpb.set_message(format!("Extracting {}...", name.to_string_lossy().yellow().bold()));
             }
         }
         else {
             if !pb_exists {
-                mainpb.set_message(format!("({sofar}) Extracting..."));
+                mainpb.set_message(format!("{} Extracting...", format!("({sofar})").white()));
             }
             else {
                 mainpb.set_message("Extracting...");
@@ -179,7 +180,7 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
         }
         if verbose
             && let Some(name) = fname {
-                mpb.println(format!("Extracting {}...", name.to_string_lossy())).unwrap();
+                mpb.println(format!("Extracting {}...", name.to_string_lossy().yellow().bold())).unwrap();
         }
         if file.header().entry_type() == tar::EntryType::Directory {
             directories.push(file);
@@ -204,7 +205,7 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
     }
     if let Some(ref pb) = *pbr.lock().unwrap() {
         // pb_exists = true;
-        pb.finish_with_message(format!("Extracted {}", name));
+        pb.finish_with_message(format!("Extracted {}", name.cyan().bold()));
     }
     mainpb.finish_with_message("Done");
 }
