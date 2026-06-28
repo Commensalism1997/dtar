@@ -18,7 +18,11 @@ enum Subcommands {
     /// List files in archive
     List {
         /// Files
-        files: Vec<OsString>
+        files: Vec<OsString>,
+
+        /// Output a clean list; don't indent, color, and list file names
+        #[arg(short, long, default_value_t = false)]
+        clean: bool,
     },
 
     /// Detect archive format
@@ -80,14 +84,40 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Subcommands::List { files }) => {
+        Some(Subcommands::List { files, clean }) => {
+            let clean = *clean;
             for file in files {
                 let fm = operations::determine_format(file)?;
                 let mut arq = operations::prepare_archive(file, fm)?;
                 // let list = operations::list_archive(arq)?;
                 let list = arq.entries()?;
-                for e in list {
-                    println!("{}", e?.path()?.to_string_lossy());
+                
+                if !clean {
+                    println!("{}", file.to_string_lossy().cyan().bold());
+                    for e in list {
+                        let _e = e?;
+                        let _p = _e.path()?;
+                        let p = _p.to_string_lossy();
+                        if let Some((dir, file)) = p.rsplit_once('/') {
+                            if !file.is_empty() {
+                                println!("{} {}{}", "├─".white(), format!("{}/", dir).white(), file.yellow().bold());
+                            }
+                            else {
+                                if let Some((parentpath, dirname)) = dir.rsplit_once('/') {
+                                    println!("{} {}{}", "├─".white(), format!("{}/", parentpath).white(), format!("{}/", dirname).blue().bold());
+                                }
+                            }
+                        }
+                        else {
+                            println!("{} {}", "├─".white(), p);
+                        }
+                    }
+                    println!("\x1b[1A\r{}", "└".white());
+                }
+                else {
+                    for e in list {
+                        println!("{}", e?.path()?.to_string_lossy());
+                    }
                 }
             }
             Ok(ExitCode::SUCCESS)
