@@ -13,5 +13,5 @@ dtar [-h] <SUBCOMMAND>...
 Provided you have cargo and have .cargo/bin in $PATH:
 
 ```bash
-cargo install --git https://github.com/Commensalism1997/dtar.git
+cargo install --locked --git https://github.com/Commensalism1997/dtar.git
 ```
