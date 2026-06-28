@@ -1,4 +1,5 @@
-use std::{env::current_dir, ffi::OsString, fmt::Display, fs, io::Write, path::PathBuf, process::ExitCode, sync::{Arc, Mutex}, thread::{JoinHandle, spawn}, time::Duration};
+use std::{env::current_dir, ffi::OsString, fmt::Display, fs, io::Write, path::PathBuf, process::ExitCode, sync::{Arc, Mutex}, thread::spawn, time::Duration};
+use colored::Colorize;
 use clap::{Parser, Subcommand, ValueEnum};
 use indicatif::MultiProgress;
 use tar::Archive;
@@ -41,7 +42,7 @@ enum Subcommands {
         verbose: bool,
 
         /// Mode
-        #[arg(short, long, default_value_t = Mode::Processor)]
+        #[arg(short, long, default_value_t = Mode::Direct)]
         mode: Mode,
 
         /// No progress bar
@@ -86,7 +87,8 @@ enum Mode {
     Processor,
     Storage,
     StorageKeep,
-    Sync
+    Sync,
+    Direct
 }
 
 impl Display for Mode {
@@ -97,6 +99,7 @@ impl Display for Mode {
             Mode::Storage => write!(f, "storage"),
             Mode::StorageKeep => write!(f, "storage-keep"),
             Mode::Sync => write!(f, "sync"),
+            Mode::Direct => write!(f, "direct")
         }
     }
 }
@@ -156,6 +159,20 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
             if !*nopb
             {
                 match *mode {
+                    Mode::Direct => {
+                        let f = fs::File::open(file)?;
+                        let pb = mpb.add(style::themed_progressbar_bytes(f.metadata()?.len()));
+                        let wr = pb.wrap_read(f);
+                        let mut arq = operations::prepare_archive_from_read(wr, fm)?;
+                        let fname = PathBuf::from(file).file_name().map(|f| f.to_owned());
+                        if let Some(name) = fname {
+                            mainpb.set_message(format!("Extracting {}...", name.to_string_lossy().yellow().bold()));
+                        }
+                        else {
+                            mainpb.set_message("Extracting...");
+                        }
+                        arq.unpack(dst)?;
+                    }
                     Mode::Processor => {
                         let arq = operations::prepare_archive(file, fm)?;
                         let (ampb, apb) = (mpb.clone(), pb.clone());

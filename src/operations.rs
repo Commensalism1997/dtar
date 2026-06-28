@@ -1,6 +1,6 @@
 use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, path::PathBuf, sync::{Arc, Mutex}};
 use flate2::bufread::GzDecoder;
-use indicatif::{MultiProgress, ProgressBar};
+use indicatif::{HumanCount, MultiProgress, ProgressBar};
 use xz2::bufread::XzDecoder;
 use tar::Archive;
 use colored::Colorize;
@@ -66,33 +66,38 @@ pub fn read_compressed_to_buf(path: &OsStr, buf: &mut impl Write, format: Format
     }
 }
 
-pub fn prepare_archive(path: &OsStr, format: Format) -> Result<Archive<Box<dyn Read + Send>>, Box<dyn std::error::Error>> {
+pub fn prepare_archive_from_read(reader: impl io::Read + Send + 'static, format: Format) -> Result<Archive<Box<dyn Read + Send>>, Box<dyn std::error::Error>> {
     match format {
         Format::Gzip => {
-            let r = BufReader::new(File::open(path)?);
+            let r = BufReader::new(reader);
             let dec = GzDecoder::new(r);
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)
         }
         Format::Xz => {
-            let r = BufReader::new(File::open(path)?);
+            let r = BufReader::new(reader);
             let dec = XzDecoder::new(r);
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)
         }
         Format::Tar => {
-            let r = BufReader::new(File::open(path)?);
+            let r = BufReader::new(reader);
             let arq = Archive::new(Box::new(r) as Box<dyn Read + Send>);
             Ok(arq)
         }
         Format::Zstd => {
-            let r = BufReader::new(File::open(path)?);
+            let r = BufReader::new(reader);
             let dec = zstd::Decoder::new(r)?;
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)
         }
         // _ => Err(Box::new(FormatError {}))
     }
+}
+
+pub fn prepare_archive(path: &OsStr, format: Format) -> Result<Archive<Box<dyn Read + Send>>, Box<dyn std::error::Error>> {
+    let f = File::open(path)?;
+    prepare_archive_from_read(f, format)
 }
 
 pub fn _list_archive(mut arq: Archive<impl Read>) -> Result<Vec<OsString>, Box<dyn std::error::Error>> {
@@ -164,7 +169,7 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
         }
         if let Some(name) = fname {
             if !pb_exists {
-                mainpb.set_message(format!("{} Extracting {}...", format!("({sofar})").white(), name.to_string_lossy().yellow().bold()));
+                mainpb.set_message(format!("{} Extracting {}...", format!("({})", HumanCount(sofar)).white(), name.to_string_lossy().yellow().bold()));
             }
             else {
                 mainpb.set_message(format!("Extracting {}...", name.to_string_lossy().yellow().bold()));
@@ -172,7 +177,7 @@ pub fn extract_archive_with_progress(mut arq: Archive<impl Read>, dst: PathBuf, 
         }
         else {
             if !pb_exists {
-                mainpb.set_message(format!("{} Extracting...", format!("({sofar})").white()));
+                mainpb.set_message(format!("{} Extracting...", format!("({})", HumanCount(sofar)).white()));
             }
             else {
                 mainpb.set_message("Extracting...");

@@ -17,9 +17,11 @@ cargo install --git https://github.com/Commensalism1997/dtar.git
 ```
 
 ## Extraction variants
-A progress bar requires the total number of entries to be known. For the tar format, the only way to know the total amount of entries is to enumerate it.
+A progress bar requires the total number of entries to be known. For the tar format, the only way to know the total amount of entries is to either enumerate it or simply track the file being read.
 
-By default, dtar spawns two threads: one reads the file and counts its entries, the other extracts it in meantime and displays the progress bar once the count is finished. Since reading and decompressing twice at the same typically places the stress on the CPU, this is known as the *processor mode*. On computers with fast CPUs, this mode is usually way faster than the other modes.
+By default, the latter is employed; this is called the *direct mode* and can be explicitly specified with `-m direct`.
+
+In *processor mode*, dtar spawns two threads: one reads the file and counts its entries, the other extracts it in meantime and displays the progress bar once the count is finished. On computers with fast CPUs, this mode is usually way faster than the other modes.
 
 The *memory mode* can be chosen with `-m memory`. With it the file is decompressed once and buffered in memory, which is then counted and extracted. Since counting an uncompressed tarball is trivial, the progress bar is usually available instantly once the file is read. For this, enough memory is required to contain the entire uncompressed tarball; therefore, this mode is unsuitable for computers with little memory and large files.
 
