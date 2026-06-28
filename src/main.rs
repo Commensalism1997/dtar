@@ -169,12 +169,12 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                 else {
                     mainpb.set_message("Extracting...");
                 }
-                operations::extract_archive_with_pb(arq, dst, &mpb, name, &mainpb, &pb, verbose, filters);
+                operations::extract_archive_with_pb(arq, dst, &mpb, name, &mainpb, &pb, verbose, filters)?;
             }
             else {
                 let arq = operations::prepare_archive(file, fm)?;
                 mainpb.set_message("Extracting...");
-                operations::extract_archive_no_pb(arq, dst, &mpb, &mainpb, verbose, filters);
+                operations::extract_archive_no_pb(arq, dst, &mpb, &mainpb, verbose, filters)?;
             }
             Ok(ExitCode::SUCCESS)
         }

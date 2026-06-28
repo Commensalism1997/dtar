@@ -72,7 +72,7 @@ pub fn prepare_archive(path: &OsStr, format: Format) -> Result<Archive<Box<dyn R
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &MultiProgress, name: String, mainpb: &ProgressBar, pb: &ProgressBar, verbose: bool, filters: Vec<OsString>) {
+pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &MultiProgress, name: String, mainpb: &ProgressBar, pb: &ProgressBar, verbose: bool, filters: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
     pb.set_message(format!("Extracting {}...", name.cyan().bold()));
 
     if dst.symlink_metadata().is_err() {
@@ -82,9 +82,9 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
     let dst = &dst.canonicalize().unwrap_or(dst.to_path_buf());
 
     let mut directories = Vec::new();
-    for entry in arq.entries().unwrap() {
-        let mut file = entry.unwrap();
-        let fpath = file.path().unwrap();
+    for entry in arq.entries()? {
+        let mut file = entry?;
+        let fpath = file.path()?;
         let fname = fpath.file_name();
         if !filters.is_empty() {
             let mut pass = false;
@@ -105,7 +105,7 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
         }
         if verbose
             && let Some(name) = fname {
-                mpb.println(format!("Extracting {}...", name.to_string_lossy().yellow().bold())).unwrap();
+                mpb.println(format!("Extracting {}...", name.to_string_lossy().yellow().bold()))?;
         }
         if file.header().entry_type() == tar::EntryType::Directory {
             directories.push(file);
@@ -120,9 +120,10 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
     }
     pb.finish_with_message(format!("Extracted {}", name.cyan().bold()));
     mainpb.finish_with_message("Done");
+    Ok(())
 }
 
-pub fn extract_archive_no_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &MultiProgress, mainpb: &ProgressBar, verbose: bool, filters: Vec<OsString>) {
+pub fn extract_archive_no_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &MultiProgress, mainpb: &ProgressBar, verbose: bool, filters: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
     let mut sofar: u64 = 0;
     if dst.symlink_metadata().is_err() {
         fs::create_dir_all(&dst).unwrap();
@@ -131,9 +132,9 @@ pub fn extract_archive_no_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &Mu
     let dst = &dst.canonicalize().unwrap_or(dst.to_path_buf());
 
     let mut directories = Vec::new();
-    for entry in arq.entries().unwrap() {
-        let mut file = entry.unwrap();
-        let fpath = file.path().unwrap();
+    for entry in arq.entries()? {
+        let mut file = entry?;
+        let fpath = file.path()?;
         let fname = fpath.file_name();
         if !filters.is_empty() {
             let mut pass = false;
@@ -154,7 +155,7 @@ pub fn extract_archive_no_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &Mu
         }
         if verbose
             && let Some(name) = fname {
-                mpb.println(format!("Extracting {}...", name.to_string_lossy().yellow().bold())).unwrap();
+                mpb.println(format!("Extracting {}...", name.to_string_lossy().yellow().bold()))?;
         }
         if file.header().entry_type() == tar::EntryType::Directory {
             directories.push(file);
@@ -169,4 +170,5 @@ pub fn extract_archive_no_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &Mu
         dir.unpack_in(dst).unwrap();
     }
     mainpb.finish_with_message("Done");
+    Ok(())
 }
