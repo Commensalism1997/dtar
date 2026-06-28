@@ -1,8 +1,8 @@
-use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read}, path::PathBuf};
-use flate2::bufread::GzDecoder;
-use indicatif::{HumanCount, MultiProgress, ProgressBar};
-use xz2::bufread::XzDecoder;
-use tar::Archive;
+use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, path::{Path, PathBuf}};
+use flate2::{Compression, bufread::GzDecoder, write::GzEncoder};
+use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressStyle};
+use xz2::{bufread::XzDecoder, write::XzEncoder};
+use tar::{Archive, Builder};
 use colored::Colorize;
 
 use crate::Format;
@@ -120,6 +120,58 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
     }
     pb.finish_with_message(format!("Extracted {}", name.cyan().bold()));
     mainpb.finish_with_message("Done");
+    Ok(())
+}
+
+pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>, content: Option<impl AsRef<Path>>, fm: Format, level: i32) -> Result<(), Box<dyn std::error::Error>> {
+    let mpb = MultiProgress::new();
+    let procpb = mpb.add(crate::style::themed_spinner());
+    let writepb = mpb.add(crate::style::themed_spinner());
+    writepb.set_style(ProgressStyle::with_template("{spinner} {bytes:.yellow} written")?);
+    let wr: indicatif::ProgressBarIter<Box<dyn Write>> = match fm {
+        Format::Tar => {
+            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+        }
+        Format::Gzip => {
+            let writer = GzEncoder::new(writer, Compression::new(level as u32));
+            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+        }
+        Format::Xz => {
+            let writer = XzEncoder::new(writer, level as u32);
+            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+        }
+        Format::Zstd => {
+            let writer = zstd::Encoder::new(writer, level)?;
+            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+        }
+    };
+    let mut tar = Builder::new(wr);
+    tar.follow_symlinks(false);
+    if let Some(cont) = content {
+        let p = cont.as_ref();
+        if let Some(fname) = p.file_name() {
+            procpb.set_message(format!("Adding contents of {}...", fname.to_string_lossy().green().bold()));
+        }
+        else {
+            procpb.set_message("Adding contents...");
+        }
+        tar.append_dir_all("", p)?;
+    }
+    else {
+        for p in paths {
+            let p = p.as_ref();
+            if let Some(fname) = p.file_name() {
+                procpb.set_message(format!("Adding {}...", fname.to_string_lossy().green().bold()));
+            }
+            else {
+                procpb.set_message("Adding...");
+            }
+            tar.append_dir_all(p, p)?;
+        }
+    }
+    tar.finish()?;
+    writepb.finish_and_clear();
+    procpb.finish_with_message("Done");
     Ok(())
 }
 

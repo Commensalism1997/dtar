@@ -1,6 +1,6 @@
-use std::{env::current_dir, ffi::OsString, fmt::Display, fs, path::PathBuf, process::ExitCode, time::Duration};
+use std::{env::current_dir, ffi::OsString, fmt::Display, fs::{self, File}, io::BufWriter, path::PathBuf, process::ExitCode, time::Duration};
 use colored::Colorize;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use indicatif::MultiProgress;
 
 mod operations;
@@ -58,11 +58,27 @@ enum Subcommands {
 
     /// Create an archive from files
     Create {
+        /// Archive to create
+        file: OsString,
 
+        /// Create an archive out of contents of a directory. If this is specified, PATHS are ignored. 
+        #[arg(short, long)]
+        content: Option<OsString>,
+
+        /// Specify a format (by default guesses from file extension).
+        #[arg(short, long)]
+        format: Option<Format>,
+
+        /// Specify compression level.
+        #[arg(short, long, default_value_t = 6)]
+        level: i32,
+
+        /// Paths to include in the archive
+        paths: Vec<OsString>
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, ValueEnum)]
 enum Format {
     Tar,
     Gzip,
@@ -178,7 +194,37 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Some(Subcommands::Create {  }) => todo!(),
+        Some(Subcommands::Create { file, paths, content, format, level }) => {
+            let writer = BufWriter::new(File::create(file)?);
+            let _p = PathBuf::from(file);
+            let ext = _p.extension();
+            let fm: Format = if let Some(qr) = format {
+                *qr
+            }
+            else {
+                if let Some(e) = ext {
+                    let e: String = e.to_string_lossy().into();
+                    match e.as_str() {
+                        "tar" => Format::Tar,
+                        "gz" => Format::Gzip,
+                        "tgz" => Format::Gzip,
+                        // "bz2" => Format::,
+                        // "tbz2" => Format::Tar,
+                        "xz" => Format::Xz,
+                        "txz" => Format::Xz,
+                        "zst" => Format::Zstd,
+                        "tzst" => Format::Zstd,
+                        _ => Format::Tar
+                    }
+                }
+                else {
+                    Format::Tar
+                }
+            };
+
+            operations::create_archive_progress(writer, paths, content.clone(), fm, *level)?;
+            Ok(ExitCode::SUCCESS)
+        }
         _ => Ok(ExitCode::FAILURE)
     }
 }
