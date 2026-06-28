@@ -1,6 +1,6 @@
 [package]
 name = "dtar"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Commensalism"]
 description = "CLI tarball archiving utility with progress indicators"
 readme = "README.md"
