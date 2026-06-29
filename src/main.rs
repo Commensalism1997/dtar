@@ -81,6 +81,10 @@ enum Subcommands {
         #[arg(short = 'n', long = "no-clobber")]
         noclobber: bool,
 
+        /// Don't the progress bar. Might be faster by foregoing counting the total bytes.
+        #[arg(short = 'b', long = "no-progress")]
+        noprogress: bool,
+
         /// Paths to include in the archive
         paths: Vec<OsString>
     }
@@ -183,7 +187,7 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
             if !*nopb
             {
                 let f = fs::File::open(file)?;
-                let pb = mpb.add(style::themed_progressbar_bytes(f.metadata()?.len()));
+                let pb = mpb.add(style::themed_progressbar_bytes_blue(f.metadata()?.len()));
                 let wr = pb.wrap_read(f);
                 let arq = operations::prepare_archive_from_read(wr, fm)?;
                 let fname = PathBuf::from(file).file_name().map(|f| f.to_owned());
@@ -202,7 +206,7 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Some(Subcommands::Create { file, paths, content, format, level, overwrite, noclobber }) => {
+        Some(Subcommands::Create { file, paths, content, format, level, overwrite, noclobber, noprogress }) => {
             if fs::exists(file)? {
                 if *noclobber {
                     println!("File exists, aborting");
@@ -247,7 +251,7 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                 }
             };
 
-            operations::create_archive_progress(writer, paths, content.clone(), fm, *level)?;
+            operations::create_archive_progress(writer, paths, content.clone(), fm, *level, !*noprogress)?;
             Ok(ExitCode::SUCCESS)
         }
         _ => Ok(ExitCode::FAILURE)

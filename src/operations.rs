@@ -1,4 +1,4 @@
-use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, path::{Path, PathBuf}, time::Duration};
+use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, os::unix::fs::MetadataExt, path::{Path, PathBuf}, time::Duration};
 use flate2::{Compression, bufread::GzDecoder, write::GzEncoder};
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressStyle};
 use xz2::{bufread::XzDecoder, write::XzEncoder};
@@ -123,18 +123,43 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
     Ok(())
 }
 
-pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>, content: Option<impl AsRef<Path>>, fm: Format, level: i32) -> Result<(), Box<dyn std::error::Error>> {
+pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>, content: Option<impl AsRef<Path>>, fm: Format, level: i32, totalpb: bool) -> Result<(), Box<dyn std::error::Error>> {
     let mpb = MultiProgress::new();
-    let procpb = mpb.add(crate::style::themed_spinner());
-    let readpb = mpb.add(crate::style::themed_spinner());
-    let writepb = mpb.add(crate::style::themed_spinner());
+    let procpb = mpb.add(crate::style::themed_spinner().with_message("Preparing..."));
     procpb.enable_steady_tick(Duration::from_millis(100));
-    readpb.set_style(ProgressStyle::with_template("{spinner} {bytes:.yellow} read")?);
+    let mut total = 0u64;
+    if let Some(ref cont) = content {
+        let p = cont.as_ref();
+        total += fs_extra::dir::get_size(p.canonicalize()?)?;
+    }
+    else {
+        if totalpb {
+            for p in paths {
+                let p = p.as_ref();
+                if p.is_dir() {
+                    total += fs_extra::dir::get_size(p.canonicalize()?)?;
+                }
+                else if p.is_file() {
+                    total += fs::metadata(p.canonicalize()?)?.size();
+                }
+            }
+        }
+    }
+    let readpb = if totalpb {
+        mpb.add(crate::style::themed_progressbar_bytes_green(total))
+    }
+    else {
+        mpb.add(crate::style::themed_spinner())
+    };
+    let writepb = mpb.add(crate::style::themed_spinner());
+    if !totalpb {
+        readpb.set_style(ProgressStyle::with_template("{spinner} {bytes:.yellow} read")?);
+    }
     writepb.set_style(ProgressStyle::with_template("{spinner} {bytes:.magenta} written")?);
     let wwr = writepb.wrap_write(writer);
     let rwr = match fm {
         Format::Tar => {
-            writepb.wrap_write(Box::new(wwr) as Box<dyn Write>)
+            readpb.wrap_write(Box::new(wwr) as Box<dyn Write>)
         }
         Format::Gzip => {
             let writer = GzEncoder::new(wwr, Compression::new(level as u32));
@@ -151,7 +176,7 @@ pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>
     };
     let mut tar = Builder::new(rwr);
     tar.follow_symlinks(false);
-    if let Some(cont) = content {
+    if let Some(ref cont) = content {
         let p = cont.as_ref();
         if let Some(fname) = p.file_name() {
             procpb.set_message(format!("Adding contents of {}...", fname.to_string_lossy().green().bold()));
