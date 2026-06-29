@@ -1,4 +1,4 @@
-use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, path::{Path, PathBuf}};
+use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, path::{Path, PathBuf}, time::Duration};
 use flate2::{Compression, bufread::GzDecoder, write::GzEncoder};
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressStyle};
 use xz2::{bufread::XzDecoder, write::XzEncoder};
@@ -128,6 +128,7 @@ pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>
     let procpb = mpb.add(crate::style::themed_spinner());
     let readpb = mpb.add(crate::style::themed_spinner());
     let writepb = mpb.add(crate::style::themed_spinner());
+    procpb.enable_steady_tick(Duration::from_millis(100));
     readpb.set_style(ProgressStyle::with_template("{spinner} {bytes:.yellow} read")?);
     writepb.set_style(ProgressStyle::with_template("{spinner} {bytes:.magenta} written")?);
     let wwr = writepb.wrap_write(writer);
