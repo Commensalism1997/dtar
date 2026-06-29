@@ -69,7 +69,7 @@ enum Subcommands {
         #[arg(short, long)]
         format: Option<Format>,
 
-        /// Specify compression level. gzip and xz use 0-9, zstd uses 1-22.
+        /// Specify compression level. gzip and xz use 0-9, bzip2 uses 1-9, zstd uses 1-22.
         #[arg(short, long)]
         level: Option<i32>,
 
@@ -94,6 +94,7 @@ enum Subcommands {
 enum Format {
     Tar,
     Gzip,
+    Bzip2,
     Xz,
     Zstd
 }
@@ -102,8 +103,9 @@ impl Display for Format {
         match *self {
             Format::Tar => write!(f, "Tar Archive"),
             Format::Gzip => write!(f, "GZip Data"),
+            Format::Bzip2 => write!(f, "BZip2 Data"),
             Format::Xz => write!(f, "XZ Data"),
-            Format::Zstd => write!(f, "Zstandard Data"),
+            Format::Zstd => write!(f, "Zstandard Data")
         }
     }
 }
@@ -237,8 +239,8 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                         "tar" => Format::Tar,
                         "gz" => Format::Gzip,
                         "tgz" => Format::Gzip,
-                        // "bz2" => Format::,
-                        // "tbz2" => Format::Tar,
+                        "bz2" => Format::Bzip2,
+                        "tbz2" => Format::Bzip2,
                         "xz" => Format::Xz,
                         "txz" => Format::Xz,
                         "zst" => Format::Zstd,

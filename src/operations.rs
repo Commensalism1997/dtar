@@ -1,5 +1,6 @@
 use std::{error::Error, ffi::{OsStr, OsString}, fs::{self, File}, io::{self, BufReader, Read, Write}, os::unix::fs::MetadataExt, path::{Path, PathBuf}, time::Duration};
-use flate2::{Compression, bufread::GzDecoder, write::GzEncoder};
+use bzip2::{bufread::BzDecoder, write::BzEncoder};
+use flate2::{bufread::GzDecoder, write::GzEncoder};
 use indicatif::{HumanCount, MultiProgress, ProgressBar, ProgressStyle};
 use xz2::{bufread::XzDecoder, write::XzEncoder};
 use tar::{Archive, Builder};
@@ -13,6 +14,7 @@ pub fn determine_format(path: &OsStr) -> Result<Format, Box<dyn std::error::Erro
     fd.read_exact(&mut mn)?;
     match &mn[..2] {
         [0x1f, 0x8b] => Ok(Format::Gzip),
+        [0x42, 0x5a] => Ok(Format::Bzip2),
         _ => {
             match &mn[..6] {
                 [0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00] => Ok(Format::Xz),
@@ -42,6 +44,11 @@ pub fn prepare_archive_from_read(reader: impl io::Read + Send + 'static, format:
     match format {
         Format::Gzip => {
             let dec = GzDecoder::new(r);
+            let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
+            Ok(arq)
+        }
+        Format::Bzip2 => {
+            let dec = BzDecoder::new(r);
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)
         }
@@ -159,7 +166,11 @@ pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>
             readpb.wrap_write(Box::new(wwr) as Box<dyn Write>)
         }
         Format::Gzip => {
-            let writer = GzEncoder::new(wwr, Compression::new(level.unwrap_or(6) as u32));
+            let writer = GzEncoder::new(wwr, flate2::Compression::new(level.unwrap_or(6) as u32));
+            readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
+        }
+        Format::Bzip2 => {
+            let writer = BzEncoder::new(wwr, bzip2::Compression::try_new(level.unwrap_or(6) as u32).unwrap_or(bzip2::Compression::new(6)));
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Xz => {
