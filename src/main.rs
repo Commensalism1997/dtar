@@ -239,12 +239,22 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                         "tar" => Format::Tar,
                         "gz" => Format::Gzip,
                         "tgz" => Format::Gzip,
+                        "gzip" => Format::Gzip,
+                        "tgzip" => Format::Gzip,
                         "bz2" => Format::Bzip2,
                         "tbz2" => Format::Bzip2,
+                        "bzip2" => Format::Bzip2,
+                        "tbzip2" => Format::Bzip2,
                         "xz" => Format::Xz,
                         "txz" => Format::Xz,
+                        "lzma" => Format::Xz,
+                        "tlzma" => Format::Xz,
+                        "lzma2" => Format::Xz,
+                        "tlzma2" => Format::Xz,
                         "zst" => Format::Zstd,
                         "tzst" => Format::Zstd,
+                        "zstd" => Format::Zstd,
+                        "tzstd" => Format::Zstd,
                         _ => Format::Tar
                     }
                 }
