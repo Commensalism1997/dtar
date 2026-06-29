@@ -73,6 +73,14 @@ enum Subcommands {
         #[arg(short, long, default_value_t = 6)]
         level: i32,
 
+        /// Overwrite the file if it exists.
+        #[arg(short = 'y', long)]
+        overwrite: bool,
+
+        /// Abort if file already exists. Overrides --overwrite.
+        #[arg(short = 'n', long = "no-clobber")]
+        noclobber: bool,
+
         /// Paths to include in the archive
         paths: Vec<OsString>
     }
@@ -194,7 +202,24 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Some(Subcommands::Create { file, paths, content, format, level }) => {
+        Some(Subcommands::Create { file, paths, content, format, level, overwrite, noclobber }) => {
+            if fs::exists(file)? {
+                if *noclobber {
+                    println!("File exists, aborting");
+                    return Ok(ExitCode::FAILURE)
+                }
+                if !*overwrite {
+                    let q = dialoguer::Confirm::new().with_prompt(format!("Overwrite existing {}?", file.to_string_lossy().cyan().bold())).default(false).interact_opt()?;
+                    if let Some(res) = q {
+                        if !res {
+                            return Ok(ExitCode::FAILURE)
+                        }
+                    }
+                    else {
+                        return Ok(ExitCode::FAILURE)
+                    }
+                }
+            }
             let writer = BufWriter::new(File::create(file)?);
             let _p = PathBuf::from(file);
             let ext = _p.extension();
