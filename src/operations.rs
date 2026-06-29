@@ -166,19 +166,19 @@ pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>
             readpb.wrap_write(Box::new(wwr) as Box<dyn Write>)
         }
         Format::Gzip => {
-            let writer = GzEncoder::new(wwr, flate2::Compression::new(level.unwrap_or(6) as u32));
+            let writer = GzEncoder::new(wwr, flate2::Compression::new(level.unwrap_or(6).clamp(0, 9) as u32));
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Bzip2 => {
-            let writer = BzEncoder::new(wwr, bzip2::Compression::try_new(level.unwrap_or(6) as u32).unwrap_or(bzip2::Compression::new(6)));
+            let writer = BzEncoder::new(wwr, bzip2::Compression::new(level.unwrap_or(6).clamp(1, 9) as u32));
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Xz => {
-            let writer = XzEncoder::new(wwr, level.unwrap_or(6) as u32);
+            let writer = XzEncoder::new(wwr, level.unwrap_or(6).clamp(0, 9) as u32);
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Zstd => {
-            let writer = zstd::Encoder::new(wwr, level.unwrap_or(0))?;
+            let writer = zstd::Encoder::new(wwr, level.unwrap_or(0).clamp(0, 22))?;
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
     };
