@@ -38,26 +38,23 @@ impl std::fmt::Display for FormatError {
 }
 
 pub fn prepare_archive_from_read(reader: impl io::Read + Send + 'static, format: Format) -> Result<Archive<Box<dyn Read + Send>>, Box<dyn std::error::Error>> {
+    let r = BufReader::with_capacity(1024*1024, reader);
     match format {
         Format::Gzip => {
-            let r = BufReader::new(reader);
             let dec = GzDecoder::new(r);
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)
         }
         Format::Xz => {
-            let r = BufReader::new(reader);
             let dec = XzDecoder::new(r);
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)
         }
         Format::Tar => {
-            let r = BufReader::new(reader);
             let arq = Archive::new(Box::new(r) as Box<dyn Read + Send>);
             Ok(arq)
         }
         Format::Zstd => {
-            let r = BufReader::new(reader);
             let dec = zstd::Decoder::new(r)?;
             let arq = Archive::new(Box::new(dec) as Box<dyn Read + Send>);
             Ok(arq)

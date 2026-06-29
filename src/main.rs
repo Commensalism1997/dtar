@@ -224,7 +224,7 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                     }
                 }
             }
-            let writer = BufWriter::new(File::create(file)?);
+            let writer = BufWriter::with_capacity(1024*1024, File::create(file)?);
             let _p = PathBuf::from(file);
             let ext = _p.extension();
             let fm: Format = if let Some(qr) = format {
