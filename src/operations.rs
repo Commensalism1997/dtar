@@ -120,7 +120,7 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
     Ok(())
 }
 
-pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>, content: Option<impl AsRef<Path>>, fm: Format, level: i32, totalpb: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>, content: Option<impl AsRef<Path>>, fm: Format, level: Option<i32>, totalpb: bool) -> Result<(), Box<dyn std::error::Error>> {
     let mpb = MultiProgress::new();
     let procpb = mpb.add(crate::style::themed_spinner().with_message("Preparing..."));
     procpb.enable_steady_tick(Duration::from_millis(100));
@@ -159,15 +159,15 @@ pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>
             readpb.wrap_write(Box::new(wwr) as Box<dyn Write>)
         }
         Format::Gzip => {
-            let writer = GzEncoder::new(wwr, Compression::new(level as u32));
+            let writer = GzEncoder::new(wwr, Compression::new(level.unwrap_or(6) as u32));
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Xz => {
-            let writer = XzEncoder::new(wwr, level as u32);
+            let writer = XzEncoder::new(wwr, level.unwrap_or(6) as u32);
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Zstd => {
-            let writer = zstd::Encoder::new(wwr, level)?;
+            let writer = zstd::Encoder::new(wwr, level.unwrap_or(0))?;
             readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
     };

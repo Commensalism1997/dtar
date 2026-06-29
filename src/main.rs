@@ -69,9 +69,9 @@ enum Subcommands {
         #[arg(short, long)]
         format: Option<Format>,
 
-        /// Specify compression level.
-        #[arg(short, long, default_value_t = 6)]
-        level: i32,
+        /// Specify compression level. gzip and xz use 0-9, zstd uses 1-22.
+        #[arg(short, long)]
+        level: Option<i32>,
 
         /// Overwrite the file if it exists.
         #[arg(short = 'y', long)]
