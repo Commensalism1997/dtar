@@ -125,7 +125,7 @@ fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
                             }
                         }
                         else {
-                            println!("{} {}", "├─".white(), p);
+                            println!("{} {}", "├─".white(), p.yellow().bold());
                         }
                     }
                     println!("\x1b[1A\r{}", "└".white());

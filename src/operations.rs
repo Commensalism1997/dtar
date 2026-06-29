@@ -126,26 +126,29 @@ pub fn extract_archive_with_pb(mut arq: Archive<impl Read>, dst: PathBuf, mpb: &
 pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>, content: Option<impl AsRef<Path>>, fm: Format, level: i32) -> Result<(), Box<dyn std::error::Error>> {
     let mpb = MultiProgress::new();
     let procpb = mpb.add(crate::style::themed_spinner());
+    let readpb = mpb.add(crate::style::themed_spinner());
     let writepb = mpb.add(crate::style::themed_spinner());
-    writepb.set_style(ProgressStyle::with_template("{spinner} {bytes:.yellow} written")?);
-    let wr: indicatif::ProgressBarIter<Box<dyn Write>> = match fm {
+    readpb.set_style(ProgressStyle::with_template("{spinner} {bytes:.yellow} read")?);
+    writepb.set_style(ProgressStyle::with_template("{spinner} {bytes:.magenta} written")?);
+    let wwr = writepb.wrap_write(writer);
+    let rwr = match fm {
         Format::Tar => {
-            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+            writepb.wrap_write(Box::new(wwr) as Box<dyn Write>)
         }
         Format::Gzip => {
-            let writer = GzEncoder::new(writer, Compression::new(level as u32));
-            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+            let writer = GzEncoder::new(wwr, Compression::new(level as u32));
+            readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Xz => {
-            let writer = XzEncoder::new(writer, level as u32);
-            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+            let writer = XzEncoder::new(wwr, level as u32);
+            readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
         Format::Zstd => {
-            let writer = zstd::Encoder::new(writer, level)?;
-            writepb.wrap_write(Box::new(writer) as Box<dyn Write>)
+            let writer = zstd::Encoder::new(wwr, level)?;
+            readpb.wrap_write(Box::new(writer) as Box<dyn Write>)
         }
     };
-    let mut tar = Builder::new(wr);
+    let mut tar = Builder::new(rwr);
     tar.follow_symlinks(false);
     if let Some(cont) = content {
         let p = cont.as_ref();
@@ -166,10 +169,16 @@ pub fn create_archive_progress(writer: impl Write, paths: &Vec<impl AsRef<Path>>
             else {
                 procpb.set_message("Adding...");
             }
-            tar.append_dir_all(p, p)?;
+            if p.is_dir() {
+                tar.append_dir_all(p, p)?;
+            }
+            else if p.is_file() {
+                tar.append_path(p)?;
+            }
         }
     }
     tar.finish()?;
+    readpb.finish_and_clear();
     writepb.finish_and_clear();
     procpb.finish_with_message("Done");
     Ok(())
