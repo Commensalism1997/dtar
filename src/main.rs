@@ -81,7 +81,7 @@ enum Subcommands {
         #[arg(short = 'n', long = "no-clobber")]
         noclobber: bool,
 
-        /// Don't the progress bar. Might be faster by foregoing counting the total bytes.
+        /// Don't show the progress bar. Might be faster by foregoing counting the total bytes.
         #[arg(short = 'b', long = "no-progress")]
         noprogress: bool,
 
